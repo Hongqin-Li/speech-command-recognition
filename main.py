@@ -7,7 +7,7 @@ from model import vgg1d_bn
 
 from preprocess import NCLASSES
 from loader import BATCH_SIZE, NMFCC
-from loader import train_loader, dev_loader, test_loader
+from loader import get_dataloaders
 
 
 LR = 4e-5
@@ -15,7 +15,7 @@ CHECKPOINT_DIR = './checkpoints'
 
 
 def train(model, optimizer, criterion, evaluator, train_loader,
-          save_dir, use_cuda, max_epochs=None, max_overfit=5):
+          save_dir, use_cuda, max_epochs=None, max_overfit=3):
 
     print(f'Learning rate: {optimizer.param_groups[0]["lr"]}')
     print(f'Train set length: {len(train_loader.dataset)}')
@@ -79,8 +79,9 @@ def cal_accuracy(model, dataloader):
 
 if __name__ == '__main__':
 
+    train_loader, dev_loader, test_loader = get_dataloaders()
+
     model = vgg1d_bn(in_channels=NMFCC, num_classes=NCLASSES)
-    # model = vgg11_bn(num_classes=NCLASSES)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()

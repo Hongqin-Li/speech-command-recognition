@@ -48,30 +48,35 @@ class AudioDataset(Dataset):
         return len(self.paths)
 
 
-# Parse and test
-people = [path.split('/')[-1] for path in glob.glob(f'{DATASET_DIR}/*')]
-npeople = len(people)
+def get_dataloaders(ntest=3, kfold=10, batch_size=BATCH_SIZE):
+    '''
+    Args:
+        ntest: ntest people will be used as test set.
+        kfold: 1/kfold of the remaining samples are used as
+               validation set, else as trainning set.
+    '''
 
-random.shuffle(people)
+    people = [path.split('/')[-1] for path in glob.glob(f'{DATASET_DIR}/*')]
+    random.shuffle(people)
 
-# FIXME tune test set size
-ntest = 3
+    traindev_paths = get_paths(people[:-ntest])
+    random.shuffle(traindev_paths)
+    dev_samples = len(traindev_paths) // kfold
 
-traindev_paths = get_paths(people[:-ntest])
-random.shuffle(traindev_paths)
-dev_samples = len(traindev_paths) // 10
+    train_dataset = AudioDataset(traindev_paths[:-dev_samples], path2class)
+    dev_dataset = AudioDataset(traindev_paths[-dev_samples:], path2class)
+    test_dataset = AudioDataset(get_paths(people[-ntest:]), path2class)
 
-train_dataset = AudioDataset(traindev_paths[:-dev_samples], path2class)
-dev_dataset = AudioDataset(traindev_paths[-dev_samples:], path2class)
-test_dataset = AudioDataset(get_paths(people[-ntest:]), path2class)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size)
+    dev_loader = DataLoader(dev_dataset, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size,
+                             shuffle=True)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-dev_loader = DataLoader(dev_dataset, batch_size=BATCH_SIZE, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    print(f'#train: {len(train_loader.dataset)}, ' +
+          f'#dev: {len(dev_loader.dataset)}, ' +
+          f'#test: {len(test_loader.dataset)}')
+    print(f'#classes: {NCLASSES}')
+    print(f'Batch size: {BATCH_SIZE}')
+    print(f'people: {people}')
 
-print(f'#train: {len(train_loader.dataset)}, ' +
-      f'#dev: {len(dev_loader.dataset)}, ' +
-      f'#test: {len(test_loader.dataset)}')
-print(f'#classes: {NCLASSES}')
-print(f'Batch size: {BATCH_SIZE}')
-print(f'people: {people}')
+    return train_loader, dev_loader, test_loader
