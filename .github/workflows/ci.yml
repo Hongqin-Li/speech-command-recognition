@@ -23,6 +23,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        sudo apt-get install libsndfile1-dev
+        # Fix sndfile library not found
         make install
 
     - name: Lint with flake8
