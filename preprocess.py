@@ -1,14 +1,11 @@
 import glob
 import re
-import random
 import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 import numpy as np
 import scipy
 import librosa
-import torch
-from torch.utils.data import Dataset
 
 RAW_PATHS = ['raw_datasets/**/*.wav', 'raw_datasets/**/*.dat']
 DATASET_DIR = 'datasets'
@@ -22,6 +19,7 @@ NCLASSES = 20
 person2datasets = defaultdict(dict)
 npeople = 0
 
+
 def parse_person_and_word(path):
     fn = path.split('/')[-1].split('.')[-2]
     assert re.fullmatch(r"\d{11}[-_]\d{2}[-_]\d{2}", fn) is not None
@@ -31,6 +29,7 @@ def parse_person_and_word(path):
     assert 0 <= word
     return person, word
 
+
 def parse1(path):
     try:
         person, word = parse_person_and_word(path)
@@ -39,9 +38,10 @@ def parse1(path):
             person2datasets[person][word] = []
 
         person2datasets[person][word].append(path)
-    except:
+    except Exception as e:
         print(path)
-        raise
+        raise e
+
 
 def fix_data(x, sr, duration):
     """Padding or trimming data points to given duration"""
@@ -53,11 +53,15 @@ def fix_data(x, sr, duration):
         xx = np.pad(x, (d//2, d - d//2))
         return xx
     else:
-        if d//2 == 0: return x[d-d//2:]
-        else: return x[d-d//2:-(d//2)]
+        if d//2 == 0:
+            return x[d-d//2:]
+        else:
+            return x[d-d//2:-(d//2)]
+
 
 def write_wav(path, x, sr):
     scipy.io.wavfile.write(path, sr, x)
+
 
 if __name__ == '__main__':
 
@@ -76,10 +80,11 @@ if __name__ == '__main__':
                 x = fix_data(x, sr, DURATION)
                 assert len(x) == int(DURATION * sr)
 
-                new_path = f'{DATASET_DIR}/{person}/{person}-{word:02d}-{i:02d}.wav'
+                new_path = f'{DATASET_DIR}/{person}/{person}' + \
+                           f'-{word:02d}-{i:02d}.wav'
 
                 os.makedirs(os.path.dirname(new_path), exist_ok=True)
                 write_wav(new_path, x, sr)
-     
-    print(f"number of people: {len(person2datasets)}", sorted(list(person2datasets.keys())))
 
+    print(f"number of people: {len(person2datasets)}",
+          sorted(list(person2datasets.keys())))

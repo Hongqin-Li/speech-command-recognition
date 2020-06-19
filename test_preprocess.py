@@ -2,6 +2,7 @@ import numpy as np
 
 from preprocess import fix_data
 
+
 def test_fix_data():
     n = 5
     x = list(np.random.random(n))
@@ -15,4 +16,3 @@ def test_fix_data():
     assert np.allclose(x+[0], fix_data(x, 1, n+1))
     assert np.allclose([0]+x+[0], fix_data(x, 1, n+2))
     assert np.allclose([0]+x+[0, 0], fix_data(x, 1, n+3))
-
