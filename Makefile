@@ -3,7 +3,7 @@ ALL:
 .PHONY: install lint test
 
 install:
-	pip install -r scripts/requirements.txt
+	pip install -r requirements.txt
 	pip install flake8
 	pip install pytest
 
