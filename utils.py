@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fftpack import dct
@@ -168,6 +170,7 @@ def hz2mel(freqs):
     return 2595 * np.log10(1 + freqs / 700)
 
 
+@lru_cache(maxsize=32)
 def mel(sr, nperseg, nmels=128, fmin=0., fmax=None, norm='slaney'):
     """
     Create a Filterbank matrix to combine FFT bins into
