@@ -23,7 +23,7 @@ def fft(xs):
 
     assert N % 2 == 0
 
-    if N <= 32:
+    if N <= 4:
         return dft(xs)
     else:
         x_even, x_odd = fft(xs[::2]), fft(xs[1::2])
@@ -69,11 +69,14 @@ def zero_crossing_rate(*args, **kwargs):
                     / (len(frame)-1) for frame in frames])
 
 
-def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
+def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False,
+                    plot=False):
     hop_length = nperseg - noverlap
 
     energy = short_time_energy(x, nperseg=nperseg, noverlap=noverlap)
     zcr = zero_crossing_rate(x, nperseg=nperseg, noverlap=noverlap)
+
+    assert len(energy) == len(zcr)
 
     slient_end = 5
 
@@ -85,15 +88,15 @@ def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
     starts, ends = [], []
     step = int(0.05*sample_rate/hop_length)
 
-    print(f'MH: {mh}, ML: {ml}, z0: {z0}, \
-            step: {step}({step*hop_length/sample_rate}s)')
+    # print(f'MH: {mh}, ML: {ml}, z0: {z0}, \
+    #         step: {step}({step*hop_length/sample_rate}s)')
 
-    while n1 < len(energy):
+    while n1 + step < len(energy):
         if energy[n1] >= mh:
             break
         else:
             n1 += step
-    while n2 >= 0:
+    while n2 - step >= 0:
         if energy[n2] >= mh:
             break
         else:
@@ -102,12 +105,12 @@ def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
     starts.append(n1)
     ends.append(n2)
 
-    while n1 >= 0:
+    while n1 - step >= 0:
         if energy[n1] < ml:
             break
         else:
             n1 -= step
-    while n2 < len(energy):
+    while n2 + step < len(energy):
         if energy[n2] < ml:
             break
         else:
@@ -118,7 +121,7 @@ def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
 
     maxd = 0.25 * sample_rate / hop_length
     d = 0
-    while n1 >= 0:
+    while n1 - step >= 0:
         if zcr[n1] <= 3*z0 or d > maxd:
             break
         else:
@@ -126,7 +129,7 @@ def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
             d += step
 
     d = 0
-    while n2 >= 0:
+    while n2 + step < len(zcr):
         if zcr[n2] <= 3*z0 or d > maxd:
             break
         else:
@@ -138,6 +141,29 @@ def endpoint_detect(x, sample_rate, nperseg, noverlap, output_all=False):
 
     assert 0 <= n1 < len(energy) and 0 <= n2 < len(energy)
     assert len(starts) == len(ends) == 3
+
+    if plot:
+        time_per_frame = 1 / sample_rate
+        startt = np.array(starts) * hop_length * time_per_frame
+        endt = np.array(ends) * hop_length * time_per_frame
+        minx, maxx = min(x), max(x)
+
+        plt.subplot(311)
+        waveplot(x, sample_rate=sample_rate)
+        plt.plot([startt[0], startt[0]], [minx, maxx], c='b')
+        plt.plot([startt[1], startt[1]], [minx, maxx], c='g')
+        plt.plot([startt[2], startt[2]], [minx, maxx], c='r')
+        plt.plot([endt[0], endt[0]], [minx, maxx], c='b')
+        plt.plot([endt[1], endt[1]], [minx, maxx], c='g')
+        plt.plot([endt[2], endt[2]], [minx, maxx], c='r')
+
+        plt.subplot(312)
+        waveplot(energy, sample_rate=sample_rate/(nperseg//2),
+                 ylabel='short time energy')
+
+        plt.subplot(313)
+        waveplot(zcr, sample_rate=sample_rate/(nperseg//2),
+                 ylabel='zero crossing rate')
 
     if output_all:
         return np.array(starts)*hop_length, np.array(ends)*hop_length, \
@@ -170,7 +196,7 @@ def hz2mel(freqs):
     return 2595 * np.log10(1 + freqs / 700)
 
 
-@lru_cache(maxsize=32)
+@lru_cache()
 def mel(sr, nperseg, nmels=128, fmin=0., fmax=None, norm='slaney'):
     """
     Create a Filterbank matrix to combine FFT bins into
