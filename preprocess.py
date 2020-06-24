@@ -1,11 +1,15 @@
-import glob
+import math
 import re
+import glob
 import os
 from collections import defaultdict
 
 import numpy as np
 import scipy
 import librosa
+import matplotlib.pyplot as plt
+
+from utils import endpoint_detect
 
 RAW_PATHS = ['raw_datasets/**/*.wav', 'raw_datasets/**/*.dat']
 DATASET_DIR = 'datasets'
@@ -13,6 +17,8 @@ DATASET_DIR = 'datasets'
 SAMPLE_RATE = 8000
 DURATION = 2
 NFRAMES = DURATION * SAMPLE_RATE
+
+DROP_BEGIN_DURATION = 0.2
 
 NCLASSES = 20
 
@@ -59,6 +65,39 @@ def fix_data(x, sr, duration):
             return x[d-d//2:-(d//2)]
 
 
+def process1(x, sr, plot=False):
+    class_lookup = ['数字', '语音', '识别', '上海', '北京',
+                    '考试', '课程', '可测', '科创', '客车',
+                    'Digital', 'Speech', 'Voice', 'Shanghai', 'Beijing',
+                    'China', 'Course', 'Test', 'Coding', 'Code']
+    assert len(class_lookup) == NCLASSES
+
+    sample_len = len(x)
+
+    # Fix keyboard click noise of 16307130362 and part of 16307130222
+    x = x[int(sr*DROP_BEGIN_DURATION):]
+
+    nperseg = int(0.03 * sr)
+    nperseg = pow(2, math.ceil(math.log(nperseg)/math.log(2)))
+
+    if plot:
+        plt.figure()
+
+    si, ei = endpoint_detect(x, nperseg=nperseg, noverlap=nperseg//3,
+                             sample_rate=sr, plot=plot)
+    x = x[si: ei+1]
+    if len(x) < sample_len:
+        x = np.pad(x, (0, sample_len - len(x)))
+
+    assert len(x) == sample_len
+
+    if plot:
+        # print(path, class_lookup[path2class(path)], len(x))
+        plt.show()
+
+    return x
+
+
 def write_wav(path, x, sr):
     scipy.io.wavfile.write(path, sr, x)
 
@@ -73,11 +112,13 @@ if __name__ == '__main__':
     # Test and Transform
     for person, word2paths in person2datasets.items():
         assert len(word2paths) == 20
+        print(f'processing {person}', end='', flush=True)
         for word, paths in word2paths.items():
             assert len(paths) == 20
             for i, path in enumerate(paths):
                 x, sr = librosa.load(path, sr=SAMPLE_RATE)
                 x = fix_data(x, sr, DURATION)
+                # x = process1(x, sr)
                 assert len(x) == int(DURATION * sr)
 
                 new_path = f'{DATASET_DIR}/{person}/{person}' + \
@@ -85,6 +126,8 @@ if __name__ == '__main__':
 
                 os.makedirs(os.path.dirname(new_path), exist_ok=True)
                 write_wav(new_path, x, sr)
+            print('.', end='', flush=True)
+        print(f'finished!')
 
     print(f"number of people: {len(person2datasets)}",
           sorted(list(person2datasets.keys())))

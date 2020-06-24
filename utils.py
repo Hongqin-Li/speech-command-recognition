@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fftpack import dct
 
+FLOAT = np.float32
+
 
 def dft(xs):
     """Vanilla DFT implementation"""
-    xs = np.asarray(xs, dtype=float)
+    xs = np.asarray(xs, dtype=FLOAT)
     N = xs.shape[0]
-    ns = np.arange(N)
+    ns = np.arange(N, dtype=FLOAT)
     k = ns.reshape((N, 1))
     M = np.exp(-2j * np.pi * k * ns / N)
 
@@ -18,7 +20,7 @@ def dft(xs):
 
 def fft(xs):
     """Recursive implementation of the 1D Cooley-Tukey FFT"""
-    xs = np.asarray(xs, dtype=float)
+    xs = np.asarray(xs, dtype=FLOAT)
     N = xs.shape[0]
 
     assert N % 2 == 0
@@ -27,13 +29,14 @@ def fft(xs):
         return dft(xs)
     else:
         x_even, x_odd = fft(xs[::2]), fft(xs[1::2])
-        factor = np.exp(-2j * np.pi * np.arange(N) / N)
+        factor = np.exp(-2j * np.pi * np.arange(N, dtype=FLOAT) / N)
         return np.concatenate([x_even + factor[:N // 2] * x_odd,
                                x_even + factor[N // 2:] * x_odd])
 
 
+@lru_cache()
 def hamming(m):
-    n = np.arange(0, m)
+    n = np.arange(0, m, dtype=FLOAT)
     return 0.54 - 0.46*np.cos(2*np.pi*n/(m-1))
 
 
@@ -231,7 +234,7 @@ def mel(sr, nperseg, nmels=128, fmin=0., fmax=None, norm='slaney'):
         enorm = 2.0 / (mel_freqs[2:nmels+2] - mel_freqs[:nmels])
         weights *= enorm[:, np.newaxis]
 
-    return weights
+    return weights.astype(np.float32)
 
 
 def mfcc(x, sample_rate, nperseg, noverlap=None, nmfcc=20, power=2, **kwargs):
@@ -253,7 +256,7 @@ def pre_emphasis(x, coef=0.97):
 
 def waveplot(y, sample_rate, xlabel="time(s)", ylabel="amplitude"):
     nframes = len(y)
-    time = np.arange(0, nframes) / sample_rate
+    time = np.arange(0, nframes, dtype=FLOAT) / sample_rate
     plt.plot(time, y)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)

@@ -8,7 +8,7 @@ from utils import fft, hamming, stft, \
 
 
 def test_fft():
-    x = np.random.random(512)
+    x = [1, 2, 3, 4]
     assert np.allclose(fft(x), np.fft.fft(x))
 
 
@@ -19,7 +19,7 @@ def test_hamming():
 
 def test_stft_of_scipy_librosa():
     nperseg = 128
-    x = np.random.random(nperseg*4)
+    x = normalize(np.arange(nperseg*4, dtype=np.float32))
     a = signal.stft(x, window='hamming', nperseg=nperseg,
                     boundary=None, padded=False)[-1]
     b = librosa.core.stft(x, window='hamming', n_fft=nperseg,
@@ -31,8 +31,8 @@ def test_stft_of_scipy_librosa():
 def test_stft():
     nperseg = 4
     noverlap = nperseg // 2
-    # x = np.array([1., 2., 3., 4., 5., 6.])
-    x = np.random.random(nperseg*4)
+
+    x = normalize(np.arange(nperseg*4, dtype=np.float32))
 
     a = librosa.core.stft(x, window='hamming',
                           n_fft=nperseg, hop_length=nperseg-noverlap,
@@ -78,12 +78,12 @@ def test_mel():
     b = librosa.filters.mel(sr=sample_rate, n_fft=nperseg, n_mels=nmels,
                             fmax=fmax, htk=True)
     assert a.shape == b.shape
+    # assert a.dtype == b.dtype
     assert np.allclose(a, b)
 
 
 def test_mfcc():
-    data = np.arange(1024, dtype=np.float32)
-    data = data / np.max(np.abs(data))
+    data = normalize(np.arange(1024))
     sr, nmfcc, nmels, nperseg, noverlap = 8000, 20, 64, 256, 128
     a = mfcc(data, sample_rate=sr, nmfcc=nmfcc, nperseg=nperseg,
              noverlap=noverlap, nmels=nmels)
@@ -91,7 +91,8 @@ def test_mfcc():
                              n_fft=nperseg, hop_length=nperseg-noverlap,
                              window='hamming', center=False, htk=True)
     assert a.shape == b.shape
-    assert np.allclose(a, b)
+    assert a.dtype == b.dtype
+    assert np.allclose(a, b, rtol=1e-4)
 
 
 def test_normalize():

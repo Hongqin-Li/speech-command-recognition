@@ -8,12 +8,12 @@ class VGG1d(nn.Module):
         self.features = features
         self.avgpool = nn.AdaptiveAvgPool1d(3)
         self.classifier = nn.Sequential(
-            nn.Linear(512 * 3, hidden_size),
+            nn.Linear(128 * 3, hidden_size),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(True),
-            nn.Dropout(),
+            # nn.Linear(hidden_size, hidden_size),
+            # nn.ReLU(True),
+            # nn.Dropout(),
             nn.Linear(hidden_size, num_classes),
         )
 
@@ -98,7 +98,9 @@ def make_layers1d(cfg, in_channels, batch_norm=False):
 
 
 cfgs = {
-    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    # 'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    # 85% 'A': [64, 'M', 128, 'M', 128, 128, 'M', 128, 'M'],
+    'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 128, 'M'],
 
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512,
           'M', 512, 512, 'M'],
