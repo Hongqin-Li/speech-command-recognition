@@ -1,22 +1,23 @@
 import os
-from collections import Counter
 
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 # from torch.optim import lr_scheduler
 from model import vgg1d_bn
 
-from preprocess import NCLASSES
+from preprocess import NCLASSES, classname
 from loader import NMFCC
 from loader import get_dataloaders
 
 
-LR = 6e-4
+LR = 5e-4
 CHECKPOINT_DIR = './checkpoints'
 
 
 def train(model, optimizer, criterion, evaluator, train_loader,
-          save_path, use_cuda, max_epochs=None, max_overfit=3):
+          save_path, use_cuda, max_epochs=None, max_overfit=3, plot=True):
 
     print(f'Learning rate: {optimizer.param_groups[0]["lr"]}')
     print(f'Train set length: {len(train_loader.dataset)}')
@@ -25,6 +26,9 @@ def train(model, optimizer, criterion, evaluator, train_loader,
     best_checkpoint = ''
     noverfits = 0
     epoch = 0
+
+    # For plot
+    losses = []
 
     while (max_epochs is None and noverfits < max_overfit) or \
           (max_epochs is not None and epoch < max_epochs):
@@ -40,6 +44,8 @@ def train(model, optimizer, criterion, evaluator, train_loader,
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
+            if plot:
+                losses.append(float(loss))
             if (i+1) % 10 == 0:
                 print(f'Epoch [{epoch}], iteration [{i+1}], loss [{loss}]')
 
@@ -56,28 +62,46 @@ def train(model, optimizer, criterion, evaluator, train_loader,
             torch.save(model.state_dict(), best_checkpoint)
             print('finished!')
 
+    if plot:
+        plt.figure()
+        plt.plot(np.linspace(0, epoch, len(losses)), losses)
+        plt.title('Loss values during training')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.savefig('loss.png', dpi=300)
+        plt.show()
+
     print(f'Loading best model: {best_checkpoint}...', end='')
     model.load_state_dict(torch.load(best_checkpoint))
     print('finished!')
 
 
+def print_latex(confusion):
+    print(' & '.join([' '] + classname) + r' \\')
+    for i, row in enumerate(confusion):
+        cnts = [f'{a:.3f}'.rstrip('0').rstrip('.') for a in row]
+        print(' & '.join([f'{classname[i]}'] + cnts) + r'\\')
+
+
 def cal_accuracy(model, dataloader):
     correct = 0
     total = 0
-    cnt = Counter()
+    confusion = np.zeros((NCLASSES, NCLASSES), dtype=int)
     for i, (data, target) in enumerate(dataloader):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         output = model(data)
         pred = output.argmax(1)
-        # print(pred.tolist())
-        cnt.update(pred.tolist())
-        correct += pred.eq(torch.squeeze(target)).sum().cpu()
+        target = torch.squeeze(target)
+        for x, y in zip(target, pred):
+            confusion[x][y] += 1
+        correct += pred.eq(target).sum().cpu()
         total += len(pred)
     acc = int(correct) / int(total)
     assert int(total) == len(dataloader.dataset)
     print(f'Accuracy: {acc}({correct}/{total})')
-    print(cnt)
+    # print(confusion/confusion.sum(axis=1, keepdims=True))
+    print_latex(confusion/confusion.sum(axis=1, keepdims=True))
     return acc
 
 
@@ -89,7 +113,6 @@ if __name__ == '__main__':
     train_loader, dev_loader, test_loader = get_dataloaders(ntest=ntest)
 
     model = vgg1d_bn(in_channels=NMFCC, num_classes=NCLASSES)
-    # model = vgg1d_bn(in_channels=NPERSEG//2+1, num_classes=NCLASSES)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
@@ -98,10 +121,14 @@ if __name__ == '__main__':
     if use_cuda:
         model.cuda()
 
+    dev_scores, test_scores = [], []
+
     def evaluate_model(m):
         m.eval()
         dev_score = cal_accuracy(m, dev_loader)
         test_score = cal_accuracy(m, test_loader)
+        dev_scores.append(float(dev_score))
+        test_scores.append(float(test_score))
         print(f'dev score [{dev_score}], test score [{test_score}]')
         return dev_score
 
@@ -114,3 +141,12 @@ if __name__ == '__main__':
         pass
 
     evaluate_model(model)
+
+    plt.figure()
+    plt.plot(np.arange(len(dev_scores)), dev_scores, c='b', label='dev')
+    plt.plot(np.arange(len(dev_scores)), test_scores, c='r', label='test')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig('devtest.png', dpi=300)
+    plt.show()

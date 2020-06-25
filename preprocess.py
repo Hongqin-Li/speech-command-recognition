@@ -22,6 +22,13 @@ DROP_BEGIN_DURATION = 0.2
 
 NCLASSES = 20
 
+classname = ['数字', '语音', '识别', '上海', '北京',
+             '考试', '课程', '可测', '科创', '客车',
+             'Digital', 'Speech', 'Voice', 'Shanghai', 'Beijing',
+             'China', 'Course', 'Test', 'Coding', 'Code']
+
+assert len(classname) == NCLASSES
+
 person2datasets = defaultdict(dict)
 npeople = 0
 
@@ -65,12 +72,7 @@ def fix_data(x, sr, duration):
             return x[d-d//2:-(d//2)]
 
 
-def process1(x, sr, plot=False):
-    class_lookup = ['数字', '语音', '识别', '上海', '北京',
-                    '考试', '课程', '可测', '科创', '客车',
-                    'Digital', 'Speech', 'Voice', 'Shanghai', 'Beijing',
-                    'China', 'Course', 'Test', 'Coding', 'Code']
-    assert len(class_lookup) == NCLASSES
+def process1(x, y, sr, plot=False):
 
     sample_len = len(x)
 
@@ -92,7 +94,7 @@ def process1(x, sr, plot=False):
     assert len(x) == sample_len
 
     if plot:
-        # print(path, class_lookup[path2class(path)], len(x))
+        print(path, classname[y], len(x))
         plt.show()
 
     return x
@@ -118,7 +120,7 @@ if __name__ == '__main__':
             for i, path in enumerate(paths):
                 x, sr = librosa.load(path, sr=SAMPLE_RATE)
                 x = fix_data(x, sr, DURATION)
-                # x = process1(x, sr)
+                # x = process1(x, path2class(path), sr)
                 assert len(x) == int(DURATION * sr)
 
                 new_path = f'{DATASET_DIR}/{person}/{person}' + \

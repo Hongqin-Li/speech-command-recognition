@@ -20,6 +20,10 @@ def dft(xs):
 
 def fft(xs):
     """Recursive implementation of the 1D Cooley-Tukey FFT"""
+    return np.fft.fft(xs).astype(np.complex64)
+
+    # Python implementation below is too slow
+
     xs = np.asarray(xs, dtype=FLOAT)
     N = xs.shape[0]
 
@@ -54,9 +58,11 @@ def stft(x, nperseg=256, noverlap=None):
     if noverlap is None:
         noverlap = nperseg // 2
 
-    return np.asarray([fft(x[i: i + nperseg] * win)[:nperseg//2+1]
-                       for i in range(0, n, nperseg-noverlap)
-                       if i + nperseg <= n]).T
+    maxn = nperseg//2 + 1
+    hop_length = nperseg - noverlap
+
+    return np.asarray([fft(x[i-nperseg: i] * win)[:maxn]
+                       for i in range(nperseg, n+1, hop_length)]).T
 
 
 def short_time_energy(*args, **kwargs):

@@ -3,12 +3,12 @@ import re
 import random
 import math
 
+import numpy as np
 import librosa
 import torch
 from torch.utils.data import Dataset, DataLoader
 from preprocess import DATASET_DIR, SAMPLE_RATE, NFRAMES, NCLASSES
-from utils import pre_emphasis, normalize
-# from utils import normalize, mfcc
+from utils import pre_emphasis, mfcc
 
 BATCH_SIZE = 64
 WINDOW_DURATION = 0.03
@@ -42,15 +42,30 @@ class AudioDataset(Dataset):
 
         assert sr == SAMPLE_RATE and len(x) == NFRAMES
 
-        x = pre_emphasis(normalize(x))
-        x = librosa.feature.mfcc(x, sr=sr, n_fft=NPERSEG,
-                                 hop_length=2*NPERSEG//3, n_mfcc=NMFCC)
+        x = pre_emphasis((x-np.mean(x))/np.std(x))
+        x = mfcc(x, sample_rate=sr, nperseg=NPERSEG, noverlap=NPERSEG//3,
+                 nmfcc=NMFCC)
+        x = (x - np.mean(x))/np.std(x)
+        yi = self.path2class(self.paths[idx])
 
-        # x = mfcc(x, sample_rate=sr, nperseg=NPERSEG, noverlap=NPERSEG//3,
-        #          nmfcc=NMFCC)
+        # Plot start
+        '''
+        from preprocess import classname
+        import matplotlib.pyplot as plt
+        from librosa.display import specshow
+        if classname[yi] == 'Beijing' or classname[yi] == '北京':
+            plt.figure()
+            specshow(x, sr=sr, x_axis='frames')
+            plt.colorbar()
+            print(self.paths[idx], classname[yi])
+            plt.savefig(classname[yi], dpi=300)
+            plt.show()
+        '''
+        # Plot end
 
         x = torch.from_numpy(x)
-        y = torch.LongTensor([self.path2class(self.paths[idx])])
+        y = torch.LongTensor([yi])
+        # print(x.shape)
         return x, y
 
     def __len__(self):
@@ -68,7 +83,7 @@ def get_dataloaders(ntest=9, kfold=10, batch_size=BATCH_SIZE):
     people = [path.split('/')[-1] for path in glob.glob(f'{DATASET_DIR}/*')]
     # random.shuffle(people)
     people.sort()
-    traindev_people, test_people = people[:-ntest], people[-ntest:]
+    traindev_people, test_people = people[ntest:], people[:ntest]
 
     traindev_paths = get_paths(traindev_people)
     random.shuffle(traindev_paths)
