@@ -1,6 +1,6 @@
 # VGG-1d For Speech Recognition
 
-![](https://github.com/Xinhong-Li/speech-command-recognition/workflows/.github/workflows/ci.yml/badge.svg)
+![](https://github.com/Xinhong-Li/speech-command-recognition/workflows/CI/badge.svg)
 
 ## Dataset
 
