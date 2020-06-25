@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 os.makedirs(os.path.dirname(new_path), exist_ok=True)
                 write_wav(new_path, x, sr)
             print('.', end='', flush=True)
-        print(f'finished!')
+        print('finished!')
 
     print(f"number of people: {len(person2datasets)}",
           sorted(list(person2datasets.keys())))
